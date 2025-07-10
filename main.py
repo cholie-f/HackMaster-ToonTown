@@ -1,35 +1,106 @@
-from telegram.ext import ApplicationBuilder
+#!/usr/bin/env python3
+# main.py - Точка входа для бота "Взлом сейфа"
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ConversationHandler
+)
+from bot.handlers import (
+    start,
+    authenticate,
+    choose_safe,
+    hack_attempt,
+    cancel,
+    AUTH,
+    SAFE_CHOICE,
+    PIN_ENTRY
+)
+from config.settings import config
+import logging
 import os
 
-# Токен теперь берётся из переменных окружения
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-
-async def start(update, context):
-    await update.message.reply_text("Бот работает безопасно!")
-
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.run_polling()
-
-from telegram.ext import ApplicationBuilder
-from bot.handlers import setup_handlers
-import os
-
-async def post_init(app):
-    await app.bot.set_my_commands([
-        ("start", "Начать взлом сейфа"),
-        ("hack", "Попробовать подобрать код")
-    ])
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+    filename='bot.log'  # Логи будут сохраняться в файл
+)
+logger = logging.getLogger(__name__)
 
 def main():
-    app = ApplicationBuilder() \
-        .token(os.getenv("TELEGRAM_TOKEN")) \
-        .post_init(post_init) \
-        .build()
-    
-    setup_handlers(app)
-    app.run_polling()
+    try:
+        # Инициализация бота
+        application = ApplicationBuilder() \
+            .token(config.TOKEN) \
+            .post_init(post_init) \
+            .build()
 
-if __name__ == "__main__":
+        # Настройка обработчиков
+        setup_handlers(application)
+
+        logger.info("Бот запускается...")
+        application.run_polling()
+
+    except Exception as e:
+        logger.error(f"Ошибка запуска бота: {e}", exc_info=True)
+
+async def post_init(application):
+    """Действия после инициализации бота"""
+    await application.bot.set_my_commands([
+        ('start', 'Начать игру "Взлом сейфа"'),
+        ('help', 'Помощь по игре'),
+        ('cancel', 'Отменить текущее действие')
+    ])
+    logger.info("Команды бота обновлены")
+
+def setup_handlers(app):
+    """Регистрация всех обработчиков команд"""
+    # Основной обработчик диалога
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            AUTH: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    authenticate
+                )
+            ],
+            SAFE_CHOICE: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    choose_safe
+                )
+            ],
+            PIN_ENTRY: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    hack_attempt
+                )
+            ]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+        allow_reentry=True
+    )
+
+    # Регистрируем обработчики
+    app.add_handler(conv_handler)
+    
+    # Обработчик ошибок
+    app.add_error_handler(error_handler)
+
+async def error_handler(update, context):
+    """Обработчик ошибок"""
+    logger.error(f"Ошибка: {context.error}", exc_info=True)
+    if update:
+        await update.message.reply_text("⚠️ Произошла ошибка. Попробуйте позже.")
+
+if __name__ == '__main__':
+    # Проверка наличия токена
+    if not config.TOKEN:
+        logger.critical("Токен бота не найден!")
+        print("ОШИБКА: Задайте TELEGRAM_TOKEN в config/settings.py или .env")
+        exit(1)
+    
     main()
