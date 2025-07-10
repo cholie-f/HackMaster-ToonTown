@@ -1,5 +1,6 @@
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler
-from bot.handlers import start, authenticate, choose_safe, hack_attempt, cancel, AUTH, SAFE_CHOICE, PIN_ENTRY
+from bot_handlers import start, authenticate, choose_safe, hack_attempt, cancel, AUTH, SAFE_CHOICE, PIN_ENTRY
+import os
 import logging
 
 logging.basicConfig(
@@ -8,7 +9,7 @@ logging.basicConfig(
 )
 
 def main():
-    application = ApplicationBuilder().token("ВАШ_ТОКЕН").build()
+    application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
     
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
