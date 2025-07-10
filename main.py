@@ -2,6 +2,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from bot_handlers import start, authenticate, choose_safe, hack_attempt, cancel, AUTH, SAFE_CHOICE, PIN_ENTRY
 import os
 import logging
+git filter-branch --force --index-filter \
+"git rm --cached --ignore-unmatch main.py" \
+--prune-empty --tag-name-filter cat -- --all
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
