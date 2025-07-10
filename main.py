@@ -1,4 +1,5 @@
-from telegram.ext import ApplicationBuilder, CommandHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler
+from bot.handlers import start, authenticate, choose_safe, hack_attempt, cancel, AUTH, SAFE_CHOICE, PIN_ENTRY
 import logging
 
 logging.basicConfig(
@@ -6,30 +7,21 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-async def start(update, context):
-    await update.message.reply_text("🛡️ Бот успешно запущен!")
-
-def is_valid_token(token: str) -> bool:
-    return (token and 
-            len(token) > 30 and 
-            ":" in token and 
-            not any(word in token.lower() for word in ["ваш", "token", "пример"]))
-
 def main():
-    TOKEN = "7781651048:AAGTycZs55gVorv9uOTtT7gTd9jFamznm_8"  # ← Вставьте СВОЙ токен
+    application = ApplicationBuilder().token("ВАШ_ТОКЕН").build()
     
-    if not is_valid_token(TOKEN):
-        print("ОШИБКА: Неверный токен! Получите через @BotFather")
-        return
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            AUTH: [MessageHandler(filters.TEXT & ~filters.COMMAND, authenticate)],
+            SAFE_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, choose_safe)],
+            PIN_ENTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, hack_attempt)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
     
-    try:
-        app = ApplicationBuilder().token(TOKEN).build()
-        app.add_handler(CommandHandler("start", start))
-        
-        logging.info("Запуск бота...")
-        app.run_polling()
-    except Exception as e:
-        logging.error(f"Ошибка: {str(e)}")
+    application.add_handler(conv_handler)
+    application.run_polling()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
