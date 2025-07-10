@@ -1,31 +1,13 @@
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler
-from bot_handlers import start, authenticate, choose_safe, hack_attempt, cancel, AUTH, SAFE_CHOICE, PIN_ENTRY
+from telegram.ext import ApplicationBuilder
 import os
-import logging
-git filter-branch --force --index-filter \
-"git rm --cached --ignore-unmatch main.py" \
---prune-empty --tag-name-filter cat -- --all
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+# Токен теперь берётся из переменных окружения
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-def main():
-    application = ApplicationBuilder().token(os.getenv("TOKEN")).build()
-    
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            AUTH: [MessageHandler(filters.TEXT & ~filters.COMMAND, authenticate)],
-            SAFE_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, choose_safe)],
-            PIN_ENTRY: [MessageHandler(filters.TEXT & ~filters.COMMAND, hack_attempt)]
-        },
-        fallbacks=[CommandHandler('cancel', cancel)]
-    )
-    
-    application.add_handler(conv_handler)
-    application.run_polling()
+async def start(update, context):
+    await update.message.reply_text("Бот работает безопасно!")
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.run_polling()
